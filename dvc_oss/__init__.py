@@ -34,14 +34,15 @@ class OSSFileSystem(ObjectFileSystem):
         from ossfs import AioOSSFileSystem as _OSSFileSystem
 
         fs_args = dict(self.fs_args)
-        
+
         try:
             config_dict = self.config if hasattr(self, "config") and self.config else {}
         except AttributeError:
             config_dict = {}
-        
+
         connect_timeout = float(
-            config_dict.get("oss_connect_timeout") or os.getenv("OSS_CONNECT_TIMEOUT", "60")
+            config_dict.get("oss_connect_timeout")
+            or os.getenv("OSS_CONNECT_TIMEOUT", "60")
         )
         read_timeout = float(
             config_dict.get("oss_read_timeout") or os.getenv("OSS_READ_TIMEOUT", "300")
@@ -49,7 +50,7 @@ class OSSFileSystem(ObjectFileSystem):
         total_timeout = float(
             config_dict.get("oss_total_timeout") or os.getenv("OSS_TOTAL_TIMEOUT", "0")
         )
-        
+
         client_kwargs = fs_args.get("client_kwargs", {})
         if "timeout" not in client_kwargs:
             timeout_kwargs = {
@@ -72,4 +73,3 @@ class OSSFileSystem(ObjectFileSystem):
 
     def unstrip_protocol(self, path):
         return "oss://" + path.lstrip("/")
-
