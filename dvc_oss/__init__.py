@@ -30,9 +30,39 @@ class OSSFileSystem(ObjectFileSystem):
     @wrap_prop(threading.Lock())
     @cached_property
     def fs(self):
+        from aiohttp import ClientTimeout
         from ossfs import AioOSSFileSystem as _OSSFileSystem
 
-        return _OSSFileSystem(**self.fs_args)
+        fs_args = dict(self.fs_args)
+
+        try:
+            config_dict = self.config if hasattr(self, "config") and self.config else {}
+        except AttributeError:
+            config_dict = {}
+
+        connect_timeout = float(
+            config_dict.get("oss_connect_timeout")
+            or os.getenv("OSS_CONNECT_TIMEOUT", "60")
+        )
+        read_timeout = float(
+            config_dict.get("oss_read_timeout") or os.getenv("OSS_READ_TIMEOUT", "300")
+        )
+        total_timeout = float(
+            config_dict.get("oss_total_timeout") or os.getenv("OSS_TOTAL_TIMEOUT", "0")
+        )
+
+        client_kwargs = fs_args.get("client_kwargs", {})
+        if "timeout" not in client_kwargs:
+            timeout_kwargs = {
+                "connect": connect_timeout,
+                "sock_read": read_timeout,
+            }
+            if total_timeout > 0:
+                timeout_kwargs["total"] = total_timeout
+            client_kwargs["timeout"] = ClientTimeout(**timeout_kwargs)
+            fs_args["client_kwargs"] = client_kwargs
+
+        return _OSSFileSystem(**fs_args)
 
     @classmethod
     def _strip_protocol(cls, path: str) -> str:
